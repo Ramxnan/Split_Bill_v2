@@ -55,13 +55,13 @@ This advanced Streamlit app is designed to facilitate the splitting of bills amo
 
 ## Project Structure
 
-bill_splitter/\n
-│\n
-├── app.py\n
-├── requirements.txt\n
-├── README.md\n
-├── .gitignore\n
-└── run_app.bat\n
+bill_splitter/
+│
+├── bill_split_app.py
+├── requirements.txt
+├── README.md
+├── .gitignore
+└── run_app.bat
 
 ## Dependencies
 

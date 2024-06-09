@@ -376,8 +376,10 @@ if st.button("Generate Excel"):
         items = [i.strip() for i in items_input.split(",")]
         
         workbook = create_excel(people, items)
-        workbook.save(file_name + ".xlsx")
-        
+
+        #save the file in the bills folder
+        workbook.save(f"Bills/{file_name}.xlsx")
+                
         # with open(file_name + ".xlsx", "rb") as file:
         #     st.download_button(
         #         label="Download Excel",
@@ -386,6 +388,6 @@ if st.button("Generate Excel"):
         #         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         #     )
         #use os to open the file
-        os.system(f"start excel {file_name}.xlsx")
+        os.system(f"start excel Bills/{file_name}.xlsx")
 
 st.write("Please fill in the people's names and items, then press the 'Generate Excel' button to create and download the bill split Excel file.")
