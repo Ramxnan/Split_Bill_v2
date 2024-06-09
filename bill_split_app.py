@@ -377,6 +377,9 @@ if st.button("Generate Excel"):
         
         workbook = create_excel(people, items)
 
+        #create folder if it doesn't exist
+        os.makedirs("Bills", exist_ok=True)
+
         #save the file in the bills folder
         workbook.save(f"Bills/{file_name}.xlsx")
                 
