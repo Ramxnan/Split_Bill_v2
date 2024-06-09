@@ -312,7 +312,7 @@ def create_excel(people,items):
     for i in range(1,r+1):
         ws[f'{number2letter(c)}{i}'].fill=fill
 
-    c=7
+    c=ws.max_column
 
     c+=2
     b_r=1
@@ -357,6 +357,7 @@ def create_excel(people,items):
             cell.border=border
             cell.alignment=Alignment(horizontal='center')
             cell.font=Font(bold=True)
+
 
     return wb
 
