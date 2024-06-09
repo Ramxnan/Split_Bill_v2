@@ -1,4 +1,3 @@
-@echo off
 
 REM Set the virtual virtual environment name
 set VENV_NAME=bill_split_venv
