@@ -1,5 +1,6 @@
+@echo off
 
-REM Set the virtual virtual environment name
+REM Set the virtual environment name
 set VENV_NAME=bill_split_venv
 
 REM Log file location
@@ -26,30 +27,27 @@ if %ERRORLEVEL% NEQ 0 (
 REM Check if virtual environment exists
 if exist %VENV_NAME% (
     echo Activating existing virtual environment... >> %LOG_FILE% 2>&1
+    call %VENV_NAME%\Scripts\activate
 ) else (
     echo Creating virtual environment... >> %LOG_FILE% 2>&1
     python -m venv %VENV_NAME% >> %LOG_FILE% 2>&1
-    
+
     REM Activate virtual environment
+    echo Activating virtual environment... >> %LOG_FILE% 2>&1
     call %VENV_NAME%\Scripts\activate
-    
-    REM Upgrade pip
+
+    REM Check if pip needs upgrade
     python -m pip install --upgrade pip >> %LOG_FILE% 2>&1
 
     REM Install dependencies
     pip install -r requirements.txt >> %LOG_FILE% 2>&1
-    
-    REM Deactivate virtual environment after installing requirements
-    deactivate
 )
-
-REM Activate virtual environment
-call %VENV_NAME%\Scripts\activate
 
 REM Run the Streamlit app and log errors
 streamlit run bill_split_app.py >> %LOG_FILE% 2>&1
 
 REM Deactivate virtual environment
+echo Deactivating virtual environment... >> %LOGILE% 2>&1
 deactivate
 
 pause
