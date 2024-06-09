@@ -1,0 +1,25 @@
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environment directory
+bill_split_venv/
+
+# Ignore environment files
+.env
+
+# Ignore system files
+.DS_Store
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore logs
+*.log
+
+v1.ipynb
+v2.ipynb
+
+*.xlsx
