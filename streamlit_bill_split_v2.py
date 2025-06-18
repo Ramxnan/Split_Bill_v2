@@ -166,11 +166,25 @@ def main():
         
         st.dataframe(pd.DataFrame(final_price_data), use_container_width=True, hide_index=True)
         st.metric("**Total Bill**", f"₹{total_bill}")
-        
-        # Weight Input Section using matrix format
+          # Weight Input Section using matrix format
         st.markdown("---")
         st.subheader("⚖️ Weight Assignment Matrix")
         st.info("💡 **Tip**: Use the buttons below for quick equal splitting, or manually edit weights in the matrix")
+        
+        # Add instructions for editing
+        with st.expander("📖 How to Edit the Weight Matrix"):
+            st.markdown("""
+            **For best results when editing weights:**
+            1. **Click on a cell** to select it
+            2. **Type the new number** (it will replace the existing value)
+            3. **Press Enter or Tab** to confirm the change
+            4. **Or click outside the cell** to save the change
+            
+            **Quick Actions:**
+            - Use the "Equal Split" buttons above each column to quickly set all people to weight 1 for that item
+            - Set weight to 0 if someone doesn't want that item
+            - Use different weights (e.g., 2, 3) to give someone a larger share
+            """)
         
         # Initialize session state for weight matrix if not exists
         if 'weight_matrix' not in st.session_state:
@@ -185,11 +199,11 @@ def main():
                 'Person': people,
                 **{item: [0] * len(people) for item in items}
             })
-        
-        # Create layout with proper column alignment for buttons above matrix
+          # Create layout with proper column alignment for buttons above matrix
         # First create columns: one for "Person" space, then one for each item
         matrix_cols = st.columns([1.2] + [1] * len(items))
-          # Headers row with quick action buttons aligned with matrix columns
+        
+        # Headers row with quick action buttons aligned with matrix columns
         with matrix_cols[0]:
             st.write("**Quick Actions:**")
         
@@ -203,8 +217,6 @@ def main():
                     # Set equal weights - set all to 1
                     for person_idx in range(len(people)):
                         st.session_state.weight_matrix.loc[person_idx, item] = 1
-                    # Set flag to indicate button was clicked
-                    st.session_state.button_clicked = True
                     st.rerun()
         
         st.write("")  # Add some spacing before the matrix
@@ -218,19 +230,22 @@ def main():
                 item, 
                 min_value=0, 
                 step=1,
-                help=f"Weight for {item}"            )
-        
-        # Use data_editor for matrix input - use session state as the data source
+                help=f"Weight for {item}"
+            )
+          # Use data_editor for matrix input - use session state as the data source
         edited_weights = st.data_editor(
             st.session_state.weight_matrix,
             column_config=column_config,
             use_container_width=True,
             hide_index=True,
-            key="weight_matrix_editor"
+            key="weight_matrix_editor",
+            on_change=None  # Remove any change callbacks that might cause conflicts
         )
         
-        # Always update session state with the edited weights
-        st.session_state.weight_matrix = edited_weights
+        # Update session state with the edited weights (this ensures user edits persist)
+        # Only update if the editor has actually changed (to avoid infinite loops)
+        if not st.session_state.weight_matrix.equals(edited_weights):
+            st.session_state.weight_matrix = edited_weights.copy()
         
         # Convert matrix to the format expected by the calculation function
         weights = []
