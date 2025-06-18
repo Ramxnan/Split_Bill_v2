@@ -33,6 +33,7 @@ def calculate_bill_split(people, items, prices, quantities, weights):
 
 def main():
     st.title("🧾 Interactive Bill Splitter")
+    st.markdown("*Split bills fairly with weighted distribution*")
     st.markdown("---")
     
     # Input section
@@ -52,48 +53,37 @@ def main():
         items_input = st.text_area(
             "Enter items (comma-separated)", 
             "Food, Drinks, Tax, Tips",
-            height=100
-        )
+            height=100        )
         items = [i.strip() for i in items_input.split(",") if i.strip()]
     
     if people and items:
         st.markdown("---")
-        
-        # Price and Quantity Input Section
+          # Price and Quantity Input Section using editable matrix
         st.subheader("💰 Item Details")
+        st.info("📝 **Instructions**: Click on cells to edit prices and quantities directly in the table below")
         
-        col1, col2, col3 = st.columns(3)
+        # Create initial dataframe for item details
+        item_details_df = pd.DataFrame({
+            'Item': items,
+            'Price (₹)': [0] * len(items),
+            'Quantity': [1] * len(items)
+        })
         
-        with col1:
-            st.write("**Items**")
-            for item in items:
-                st.write(f"• {item}")
+        # Use data_editor for Excel-like editing
+        edited_item_details = st.data_editor(
+            item_details_df,
+            column_config={
+                "Item": st.column_config.TextColumn("Item", disabled=True),
+                "Price (₹)": st.column_config.NumberColumn("Price (₹)", min_value=0, step=1),
+                "Quantity": st.column_config.NumberColumn("Quantity", min_value=0, step=1)
+            },
+            use_container_width=True,
+            key="item_details_editor"
+        )
         
-        with col2:
-            st.write("**Prices (₹)**")
-            prices = []
-            for i, item in enumerate(items):
-                price = st.number_input(
-                    f"{item} (₹)", 
-                    min_value=0, 
-                    value=0, 
-                    step=1,
-                    key=f"price_{i}"
-                )
-                prices.append(price)
-        
-        with col3:
-            st.write("**Qty**")
-            quantities = []
-            for i, item in enumerate(items):
-                qty = st.number_input(
-                    f"{item}", 
-                    min_value=0, 
-                    value=1,
-                    key=f"qty_{i}",
-                    help=f"Quantity for {item}"
-                )
-                quantities.append(qty)
+        # Extract prices and quantities from the edited dataframe
+        prices = edited_item_details['Price (₹)'].tolist()
+        quantities = edited_item_details['Quantity'].tolist()
         
         # Calculate final prices
         final_prices = [price * qty for price, qty in zip(prices, quantities)]
@@ -107,51 +97,94 @@ def main():
             "Item": items,
             "Price": [f"₹{p}" for p in prices],
             "Quantity": quantities,
-            "Final Price": [f"₹{fp}" for fp in final_prices]
-        }
+            "Final Price": [f"₹{fp}" for fp in final_prices]        }
         
-        st.dataframe(pd.DataFrame(final_price_data), use_container_width=True)
+        st.dataframe(pd.DataFrame(final_price_data), use_container_width=True, hide_index=True)
         st.metric("**Total Bill**", f"₹{total_bill}")
         
-        # Weight Input Section (like the second table in Excel)
+        # Weight Input Section using matrix format
         st.markdown("---")
-        st.subheader("⚖️ Weight Assignment")
-        st.write("Assign weights to determine how much each person consumed of each item. For equal sharing, use the same number for all people.")
+        st.subheader("⚖️ Weight Assignment Matrix")
+        st.info("💡 **Tip**: Use the buttons below for quick equal splitting, or manually edit weights in the matrix")
         
+        # Initialize session state for weight matrix if not exists
+        if 'weight_matrix' not in st.session_state:
+            st.session_state.weight_matrix = pd.DataFrame({
+                'Person': people,
+                **{item: [0] * len(people) for item in items}
+            })
+        
+        # Update matrix if people or items changed
+        if (set(st.session_state.weight_matrix['Person']) != set(people) or 
+            set(st.session_state.weight_matrix.columns[1:]) != set(items)):
+            st.session_state.weight_matrix = pd.DataFrame({
+                'Person': people,
+                **{item: [0] * len(people) for item in items}
+            })
+        
+        # Create layout with proper column alignment for buttons above matrix
+        # First create columns: one for "Person" space, then one for each item
+        matrix_cols = st.columns([1.2] + [1] * len(items))
+          # Headers row with quick action buttons aligned with matrix columns
+        with matrix_cols[0]:
+            st.write("**Quick Actions:**")
+        
+        for idx, item in enumerate(items):
+            with matrix_cols[idx + 1]:
+                if st.button(f"⚖️ {item}", key=f"equal_{item}", help=f"Set equal weights for {item}", use_container_width=True):
+                    # Set equal weights (1 for each person) for this item
+                    for person_idx in range(len(people)):
+                        st.session_state.weight_matrix.loc[person_idx, item] = 1
+                    st.rerun()
+        
+        st.write("")  # Add some spacing before the matrix
+        
+        # Configure columns for the weight matrix editor
+        column_config = {
+            "Person": st.column_config.TextColumn("Person", disabled=True)
+        }
+        for item in items:
+            column_config[item] = st.column_config.NumberColumn(
+                item, 
+                min_value=0, 
+                step=1,
+                help=f"Weight for {item}"
+            )
+        
+        # Use data_editor for matrix input
+        edited_weights = st.data_editor(
+            st.session_state.weight_matrix,
+            column_config=column_config,
+            use_container_width=True,
+            hide_index=True,
+            key="weight_matrix_editor"
+        )
+        
+        # Update session state
+        st.session_state.weight_matrix = edited_weights
+        
+        # Convert matrix to the format expected by the calculation function
         weights = []
         for item_idx, item in enumerate(items):
-            st.write(f"**{item}** (Final Price: ₹{final_prices[item_idx]})")
-            
-            cols = st.columns(len(people))
-            item_weights = []
-            
-            for person_idx, person in enumerate(people):
-                with cols[person_idx]:
-                    weight = st.number_input(
-                        f"{person}",
-                        min_value=0,
-                        value=0,
-                        step=1,
-                        key=f"weight_{item_idx}_{person_idx}",
-                        help=f"Weight for {person}"
-                    )
-                    item_weights.append(weight)
-            
+            item_weights = edited_weights[item].tolist()
             weights.append(item_weights)
-            
-            # Show weight totals and validation
+          # Create and display weight totals summary table
+        weight_totals_data = {'Person': ['TOTAL WEIGHTS']}
+        for item in items:
+            item_weights = edited_weights[item].tolist()
             total_weight = sum(item_weights)
-            if total_weight > 0:
-                st.success(f"Total weight: {total_weight}")
-            else:
-                st.warning("No weights assigned for this item")
+            weight_totals_data[item] = [total_weight]
+        
+        weight_totals_df = pd.DataFrame(weight_totals_data)
+        
+        st.write("**Weight Totals Summary:**")
+        st.dataframe(weight_totals_df, use_container_width=True, hide_index=True)
         
         # Calculate splits
         if any(sum(w) > 0 for w in weights):
             st.markdown("---")
             st.subheader("💸 Bill Split Results")
-            
-            # Calculate individual splits
+              # Calculate individual splits
             splits = {}
             for person_idx, person in enumerate(people):
                 splits[person] = []
@@ -165,82 +198,93 @@ def main():
                         split_amount = 0
                     splits[person].append(split_amount)
             
-            # Create split table
+            # Create main split table (just the people)
             split_data = {"Person": people}
             for item_idx, item in enumerate(items):
                 split_data[item] = [f"₹{splits[person][item_idx]:.0f}" for person in people]
-            
-            # Add person totals
+              # Add person totals
             person_totals = [sum(splits[person]) for person in people]
             split_data["Total Split"] = [f"₹{total:.0f}" for total in person_totals]
             
-            st.dataframe(pd.DataFrame(split_data), use_container_width=True)
+            split_df = pd.DataFrame(split_data)
+            st.dataframe(split_df, use_container_width=True, hide_index=True)
             
-            # Item totals and balance check
-            st.markdown("---")
-            st.subheader("✅ Validation & Balance")
+            # Create separate summary table for item totals and balance
+            st.write("**Split Summary & Validation:**")
             
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write("**Item Totals (from splits)**")
-                for item_idx, item in enumerate(items):
-                    item_total = sum(splits[person][item_idx] for person in people)
-                    balance = final_prices[item_idx] - item_total
-                    
-                    if abs(balance) < 1:  # Considering integer precision
-                        st.success(f"{item}: ₹{item_total:.0f} ✅")
-                    else:
-                        st.error(f"{item}: ₹{item_total:.0f} (Balance: ₹{balance:.0f}) ❌")
-            
-            with col2:
-                st.write("**Summary**")
-                total_split = sum(person_totals)
-                overall_balance = total_bill - total_split
+            # Calculate item totals
+            summary_data = {"Summary": ["Item Totals", "Expected (Final Price)", "Balance"]}
+            for item_idx, item in enumerate(items):
+                item_total = sum(splits[person][item_idx] for person in people)
+                balance = final_prices[item_idx] - item_total
                 
-                if abs(overall_balance) < 1:
-                    st.success(f"Total Split: ₹{total_split:.0f} ✅")
-                    st.success("All amounts properly allocated!")
-                else:
-                    st.error(f"Total Split: ₹{total_split:.0f}")
-                    st.error(f"Balance: ₹{overall_balance:.0f} ❌")
+                summary_data[item] = [
+                    f"₹{item_total:.0f}",
+                    f"₹{final_prices[item_idx]:.0f}",
+                    f"₹{balance:.0f} {'✅' if abs(balance) < 1 else '❌'}"
+                ]
+            
+            # Add total column
+            total_split_amount = sum(person_totals)
+            overall_balance = total_bill - total_split_amount
+            summary_data["Total Split"] = [
+                f"₹{total_split_amount:.0f}",
+                f"₹{total_bill:.0f}",
+                f"₹{overall_balance:.0f} {'✅' if abs(overall_balance) < 1 else '❌'}"
+            ]
+            
+            summary_df = pd.DataFrame(summary_data)
+            st.dataframe(summary_df, use_container_width=True, hide_index=True)
+            
+            # Quick validation summary
+            if abs(overall_balance) < 1:
+                st.success("✅ All amounts properly allocated!")
+            else:
+                st.error("❌ Balance mismatch detected")
             
             # Payment tracking section
             st.markdown("---")
-            st.subheader("💳 Payment Tracking")
+            st.subheader("💳 Payment Tracking - Edit the table below")
             
-            col1, col2 = st.columns(2)
+            # Create payment tracking dataframe
+            payment_df = pd.DataFrame({
+                'Person': people,
+                'Paid (₹)': [0] * len(people)
+            })
+              # Use data_editor for payment input
+            edited_payments = st.data_editor(
+                payment_df,
+                column_config={
+                    "Person": st.column_config.TextColumn("Person", disabled=True),
+                    "Paid (₹)": st.column_config.NumberColumn("Paid (₹)", min_value=0, step=1)
+                },
+                use_container_width=True,
+                hide_index=True,
+                key="payment_editor"
+            )
             
-            with col1:
-                st.write("**Who Paid What?**")
-                paid_amounts = []
-                for person_idx, person in enumerate(people):
-                    paid = st.number_input(
-                        f"{person} paid (₹):",
-                        min_value=0,
-                        value=0,
-                        step=1,
-                        key=f"paid_{person_idx}"
-                    )
-                    paid_amounts.append(paid)
+            # Extract paid amounts
+            paid_amounts = edited_payments['Paid (₹)'].tolist()
             
-            with col2:
-                st.write("**Final Settlement**")
-                settlement_data = {
-                    "Person": people,
-                    "Paid": [f"₹{paid:.0f}" for paid in paid_amounts],
-                    "Should Pay": [f"₹{total:.0f}" for total in person_totals],
-                    "Owes (+) / Gets (-)" : [f"₹{paid - total:.0f}" for paid, total in zip(paid_amounts, person_totals)]
-                }
-                
-                st.dataframe(pd.DataFrame(settlement_data), use_container_width=True)
-                
-                # Summary
-                total_paid = sum(paid_amounts)
-                if abs(total_paid - total_bill) < 1:
-                    st.success(f"✅ Payment verified: ₹{total_paid:.0f}")
-                else:
-                    st.warning(f"⚠️ Payment mismatch: Paid ₹{total_paid:.0f}, Bill ₹{total_bill:.0f}")
+            # Display settlement summary
+            st.markdown("---")
+            st.subheader("📊 Final Settlement Summary")
+            
+            settlement_data = {
+                "Person": people,
+                "Paid": [f"₹{paid:.0f}" for paid in paid_amounts],
+                "Should Pay": [f"₹{total:.0f}" for total in person_totals],
+                "Owes (+) / Gets (-)" : [f"₹{paid - total:.0f}" for paid, total in zip(paid_amounts, person_totals)]
+            }
+            
+            st.dataframe(pd.DataFrame(settlement_data), use_container_width=True, hide_index=True)
+            
+            # Summary
+            total_paid = sum(paid_amounts)
+            if abs(total_paid - total_bill) < 1:
+                st.success(f"✅ Payment verified: ₹{total_paid:.0f}")
+            else:
+                st.warning(f"⚠️ Payment mismatch: Paid ₹{total_paid:.0f}, Bill ₹{total_bill:.0f}")
 
 if __name__ == "__main__":
     main()
