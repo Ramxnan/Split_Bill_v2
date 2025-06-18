@@ -80,29 +80,28 @@ def main():
     st.title("🧾 Interactive Bill Splitter")
     st.markdown("*Split bills fairly with weighted distribution*")
     st.markdown("---")
-    
-    # Input section
+      # Input section
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("👥 People")
         people_input = st.text_area(
-            "Enter names (comma-separated)", 
-            placeholder="e.g., Adam, Bob, Charlie, David",
+            "Who's splitting the bill?", 
+            placeholder="🧑‍💼 Alice, 👨‍💻 Bob, 👩‍🎨 Carol, 🧑‍🍳 David",
             height=100,
-            help="Type the names of people who will split the bill"
+            help="💡 Enter names separated by commas"
         )
         people = [p.strip() for p in people_input.split(",") if p.strip()]
     
     with col2:
-        st.subheader("🛒 Items")
-        items_input = st.text_area(            "Enter items (comma-separated)", 
-            placeholder="e.g., Food, Drinks, Tax, Tips",
+        st.subheader("🛒 Items & Categories")
+        items_input = st.text_area(
+            "What are you splitting?", 
+            placeholder="🍕 Food, 🥤 Drinks, 💰 Tax, 🎯 Tips",
             height=100,
-            help="Type the items or categories for the bill"
+            help="💡 Enter items/categories separated by commas"
         )
-        items = [i.strip() for i in items_input.split(",") if i.strip()]
-    
+        items = [i.strip() for i in items_input.split(",") if i.strip()]    
     # Generate Template Button - Show as soon as user starts typing
     if people_input.strip() or items_input.strip():
         st.markdown("---")
@@ -115,17 +114,30 @@ def main():
                     st.error("❌ Please enter at least one item")
                 else:
                     st.session_state.show_template = True
+                    st.session_state.people = people
+                    st.session_state.items = items
                     st.success("✅ Template generated! Scroll down to start splitting the bill.")
                     st.rerun()
-    
-    # Show template only after button is clicked and validation passed
-    if st.session_state.get('show_template', False) and people and items:
-        st.markdown("---")
+      # Show template only after button is clicked and validation passed
+    if st.session_state.get('show_template', False):
+        # Use session state values to maintain consistency
+        people = st.session_state.get('people', people)
+        items = st.session_state.get('items', items)
         
-        # Price and Quantity Input Section using editable matrix
+        # Add a reset button at the top
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col3:
+            if st.button("🔄 Reset Template", type="secondary", help="Start over with new people/items"):
+                # Clear all session state
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+        st.markdown("---")
+          # Price and Quantity Input Section using editable matrix
         st.subheader("💰 Item Details")
         st.info("📝 **Instructions**: Click on cells to edit prices and quantities directly in the table below")
-          # Create initial dataframe for item details
+        
+        # Create initial dataframe for item details
         item_details_df = pd.DataFrame({
             'Item': items,
             'Price (₹)': [0] * len(items),
@@ -156,70 +168,75 @@ def main():
         # Display final prices
         st.markdown("---")
         st.subheader("📊 Final Prices")
-        
         final_price_data = {
-            "Item": items,
-            "Price": [f"₹{p}" for p in prices],
-            "Quantity": quantities,
-            "Final Price": [f"₹{fp}" for fp in final_prices]
+            "🍽️ Item": items,
+            "💰 Price": [f"₹{p}" for p in prices],
+            "🔢 Qty": quantities,
+            "💸 Final Price": [f"₹{fp}" for fp in final_prices]
         }
         
         st.dataframe(pd.DataFrame(final_price_data), use_container_width=True, hide_index=True)
-        st.metric("**Total Bill**", f"₹{total_bill}")
-          # Weight Input Section using matrix format
+        
+        # Total bill with better formatting
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.metric("🧾 **Total Bill**", f"₹{total_bill}")
+        
+        # Weight Input Section using matrix format
         st.markdown("---")
         st.subheader("⚖️ Weight Assignment Matrix")
-        st.info("💡 **Tip**: Use the buttons below for quick equal splitting, or manually edit weights in the matrix")
+        st.info("💡 **Tip**: Click cells to edit weights, or use Quick Split buttons below")
         
         # Add instructions for editing
-        with st.expander("📖 How to Edit the Weight Matrix"):
+        with st.expander("📖 How to Edit Weights"):
             st.markdown("""
-            **For best results when editing weights:**
-            1. **Click on a cell** to select it
-            2. **Type the new number** (it will replace the existing value)
-            3. **Press Enter or Tab** to confirm the change
-            4. **Or click outside the cell** to save the change
+            **Editing Tips:**
+            1. **Click on a cell** → Type new number → **Press Enter**
+            2. **Weight 0** = Person doesn't pay for this item
+            3. **Weight 1** = Normal share
+            4. **Weight 2+** = Larger share (e.g., if someone ate more)
             
-            **Quick Actions:**
-            - Use the "Equal Split" buttons above each column to quickly set all people to weight 1 for that item
-            - Set weight to 0 if someone doesn't want that item
-            - Use different weights (e.g., 2, 3) to give someone a larger share
+            **Quick Split Buttons:** Set everyone to equal weight (1) for that item
             """)
-        
-        # Initialize session state for weight matrix if not exists
-        if 'weight_matrix' not in st.session_state:
-            st.session_state.weight_matrix = pd.DataFrame({
-                'Person': people,
-                **{item: [0] * len(people) for item in items}            })
-        
-        # Update matrix if people or items changed
-        if (set(st.session_state.weight_matrix['Person']) != set(people) or 
-            set(st.session_state.weight_matrix.columns[1:]) != set(items)):
+          # Create initial weight matrix with session state
+        if 'weight_matrix' not in st.session_state or len(st.session_state.weight_matrix) == 0:
             st.session_state.weight_matrix = pd.DataFrame({
                 'Person': people,
                 **{item: [0] * len(people) for item in items}
             })
-          # Create layout with proper column alignment for buttons above matrix
-        # First create columns: one for "Person" space, then one for each item
+        
+        # Update matrix if people or items changed
+        current_people = set(st.session_state.weight_matrix['Person'])
+        current_items = set(st.session_state.weight_matrix.columns[1:])
+        if current_people != set(people) or current_items != set(items):
+            st.session_state.weight_matrix = pd.DataFrame({
+                'Person': people,
+                **{item: [0] * len(people) for item in items}
+            })
+        
+        # Create layout for buttons above each item column
         matrix_cols = st.columns([1.2] + [1] * len(items))
         
-        # Headers row with quick action buttons aligned with matrix columns
+        # Quick action buttons
         with matrix_cols[0]:
             st.write("**Quick Actions:**")
         
+        # Handle button clicks and apply to session state
         for idx, item in enumerate(items):
             with matrix_cols[idx + 1]:
-                if st.button(f"⚖️ Equal Split", 
-                           key=f"split_{item}", 
+                # Create a more specific button label
+                button_key = f"split_{item}_{idx}"
+                if st.button(f"⚖️ Split {item[:8]}{'...' if len(item) > 8 else ''}", 
+                           key=button_key,
                            help=f"Set equal weights for all people for {item}", 
                            use_container_width=True,
                            type="primary"):
-                    # Set equal weights - set all to 1
+                    # Apply equal split to session state
                     for person_idx in range(len(people)):
                         st.session_state.weight_matrix.loc[person_idx, item] = 1
                     st.rerun()
         
-        st.write("")  # Add some spacing before the matrix
+        st.write("")  # Spacing
         
         # Configure columns for the weight matrix editor
         column_config = {
@@ -232,20 +249,18 @@ def main():
                 step=1,
                 help=f"Weight for {item}"
             )
-          # Use data_editor for matrix input - use session state as the data source
+        
+        # Use data_editor for matrix input with session state
         edited_weights = st.data_editor(
             st.session_state.weight_matrix,
             column_config=column_config,
             use_container_width=True,
             hide_index=True,
-            key="weight_matrix_editor",
-            on_change=None  # Remove any change callbacks that might cause conflicts
+            key="weight_matrix_editor"
         )
         
-        # Update session state with the edited weights (this ensures user edits persist)
-        # Only update if the editor has actually changed (to avoid infinite loops)
-        if not st.session_state.weight_matrix.equals(edited_weights):
-            st.session_state.weight_matrix = edited_weights.copy()
+        # Update session state with edited weights
+        st.session_state.weight_matrix = edited_weights
         
         # Convert matrix to the format expected by the calculation function
         weights = []
@@ -254,7 +269,7 @@ def main():
             weights.append(item_weights)
         
         # Create and display weight totals summary table
-        weight_totals_data = {'Person': ['TOTAL WEIGHTS']}
+        weight_totals_data = {'💭 Summary': ['TOTAL WEIGHTS']}
         for item in items:
             item_weights = edited_weights[item].tolist()
             total_weight = sum(item_weights)
@@ -262,7 +277,7 @@ def main():
         
         weight_totals_df = pd.DataFrame(weight_totals_data)
         
-        st.write("**Weight Totals Summary:**")
+        st.write("**📊 Weight Totals:**")
         st.dataframe(weight_totals_df, use_container_width=True, hide_index=True)
         
         # Calculate splits
@@ -327,22 +342,22 @@ def main():
                 st.success("✅ All amounts properly allocated!")
             else:
                 st.error("❌ Balance mismatch detected")
-            
-            # Payment tracking section
+              # Payment tracking section
             st.markdown("---")
-            st.subheader("💳 Payment Tracking - Edit the table below")
+            st.subheader("💳 Payment Tracking")
+            st.info("💡 **Tip**: Enter how much each person actually paid")
             
             # Create payment tracking dataframe
             payment_df = pd.DataFrame({
-                'Person': people,
-                'Paid (₹)': [0] * len(people)            })
-            
-            # Use data_editor for payment input
+                '👤 Person': people,
+                '💰 Paid (₹)': [0] * len(people)
+            })
+              # Use data_editor for payment input
             edited_payments = st.data_editor(
                 payment_df,
                 column_config={
-                    "Person": st.column_config.TextColumn("Person", disabled=True),
-                    "Paid (₹)": st.column_config.NumberColumn("Paid (₹)", min_value=0, step=1)
+                    "👤 Person": st.column_config.TextColumn("👤 Person", disabled=True),
+                    "💰 Paid (₹)": st.column_config.NumberColumn("💰 Paid (₹)", min_value=0, step=1)
                 },
                 use_container_width=True,
                 hide_index=True,
@@ -350,17 +365,16 @@ def main():
             )
             
             # Extract paid amounts
-            paid_amounts = edited_payments['Paid (₹)'].tolist()
+            paid_amounts = edited_payments['💰 Paid (₹)'].tolist()
             
             # Display settlement summary
             st.markdown("---")
             st.subheader("📊 Final Settlement Summary")
-            
             settlement_data = {
-                "Person": people,
-                "Paid": [f"₹{paid:.0f}" for paid in paid_amounts],
-                "Should Pay": [f"₹{total:.0f}" for total in person_totals],
-                "Owes (-) / Gets (+)" : [f"₹{paid - total:.0f}" for paid, total in zip(paid_amounts, person_totals)]
+                "👤 Person": people,
+                "💸 Paid": [f"₹{paid:.0f}" for paid in paid_amounts],
+                "🎯 Should Pay": [f"₹{total:.0f}" for total in person_totals],
+                "⚖️ Balance": [f"₹{paid - total:.0f}" for paid, total in zip(paid_amounts, person_totals)]
             }
             
             st.dataframe(pd.DataFrame(settlement_data), use_container_width=True, hide_index=True)
@@ -371,30 +385,36 @@ def main():
                 st.success(f"✅ Payment verified: ₹{total_paid:.0f}")
             else:
                 st.warning(f"⚠️ Payment mismatch: Paid ₹{total_paid:.0f}, Bill ₹{total_bill:.0f}")
-            
-            # Settlement transactions
+              # Settlement transactions
             st.markdown("---")
-            st.subheader("💰 Settlement Transactions")
+            st.subheader("� Settlement Transactions")
+            st.info("💡 **Who needs to pay whom to settle the bill**")
             
             transactions = calculate_settlement_transactions(people, paid_amounts, person_totals)
             
             if not transactions:
-                st.info("✅ No transactions needed - all balances are settled")
+                st.success("🎉 Perfect! No transactions needed - all balances are settled")
             else:
-                transaction_df = pd.DataFrame(transactions, columns=["From", "To", "Amount"])
+                transaction_df = pd.DataFrame(transactions, columns=["💸 From", "💰 To", "💵 Amount (₹)"])
+                # Format the amount column
+                transaction_df["💵 Amount (₹)"] = transaction_df["💵 Amount (₹)"].apply(lambda x: f"₹{x:.0f}")
                 st.dataframe(transaction_df, use_container_width=True, hide_index=True)
                 
                 # Instructions for using the transaction table
-                st.markdown(
-                    """
-                    ### How to Use the Settlement Transactions:
-                    - **From**: Person who owes money
-                    - **To**: Person who should receive money
-                    - **Amount**: Amount to be transferred
+                with st.expander("📖 How to Use These Transactions"):
+                    st.markdown("""
+                    **Settlement Guide:**
+                    - **💸 From**: Person who owes money and needs to pay
+                    - **💰 To**: Person who should receive the money  
+                    - **💵 Amount**: Exact amount to transfer
                     
-                    💡 **Tip**: Use these transactions to settle up in cash or via digital payment apps.
-                    """
-                )
+                    **Payment Methods:**
+                    - 💳 Digital: UPI, PayTM, Google Pay, etc.
+                    - 💵 Cash: Physical money transfer
+                    - 🏦 Bank: Direct transfer
+                    
+                    💡 **Pro Tip**: Complete all transactions shown above to fully settle the bill!
+                    """)
 
 if __name__ == "__main__":
     main()
