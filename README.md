@@ -2,56 +2,76 @@
 
 A modern, user-friendly Streamlit web application that makes splitting bills among friends, family, or colleagues incredibly easy and fair. No more complicated calculations or awkward conversations about who owes what!
 
-🌐 **Live Demo**: [splitzy.streamlit.app](https://splitzy.streamlit.app)
-
 ## ✨ Features
 
 ### 🎯 **Smart Bill Splitting**
 - **Weighted Distribution**: Split items proportionally based on who consumed what
-- **Equal Split Buttons**: One-click equal distribution for shared items
-- **Manual Control**: Fine-tune weights for complex splitting scenarios
+- **Direct Item Entry**: Add items with final prices directly in an intuitive table
+- **Manual Weight Control**: Fine-tune weights for complex splitting scenarios
 - **Real-time Validation**: Instant feedback on splitting accuracy
 
-### 🎨 **Intuitive User Experience**
+### 🎨 **Streamlined User Experience**
+- **Three-Step Process**: People → Items → Weights for maximum simplicity
 - **Excel-like Interface**: Familiar grid editing with click-to-edit cells
+- **Dynamic Tables**: Add/remove rows as needed with flexible editing
 - **Visual Feedback**: Color-coded validation (✅ balanced, ❌ mismatch)
-- **Progressive Disclosure**: Clean interface that reveals options step-by-step
 - **Mobile Friendly**: Works seamlessly on phones, tablets, and desktops
 
 ### 💰 **Complete Financial Tracking**
-- **Item Details**: Track prices, quantities, and final costs
+- **Direct Price Entry**: Enter final prices for each item without separate price/quantity fields
 - **Payment Tracking**: Record who actually paid what
 - **Settlement Calculator**: Automatic who-owes-whom calculations
 - **Transaction Guide**: Step-by-step settlement instructions
 
+### 📱 **Sharing & Export Features**
+- **WhatsApp Summary**: Copy-paste ready summary for group chats
+- **Detailed Export**: Download comprehensive records as text files
+- **CSV Export**: Spreadsheet-compatible data for analysis
+- **Complete Documentation**: All weights, calculations, and transactions included
+
 ### 🔧 **Smart Features**
+- **Zero Session State**: No lag or caching issues - everything loads instantly
 - **Auto-calculations**: Real-time totals and splits
 - **Balance Validation**: Ensures every rupee is accounted for
 - **Weight Summaries**: Clear overview of distribution patterns
-- **Reset Options**: Easy restart without losing session
 
 ## 🚀 How It Works
 
-### 1. **Setup Your Group**
+### **Step 1: 👥 Enter People**
 ```
-👥 People: Alice, Bob, Carol, David
-🛒 Items: 🍕 Food, 🥤 Drinks, 💰 Tax, 🎯 Tips
+Enter names: Alice, Bob, Carol, David
 ```
+- Simple text area input with comma separation
+- Instant confirmation of participants added
 
-### 2. **Enter Item Details**
-- Click cells to edit prices and quantities
-- Watch totals calculate automatically
-- See your final bill amount
+### **Step 2: 💰 Add Bill Items**
+```
+Direct table editing:
+Item Name          | Final Price (₹)
+Food              | 800
+Drinks            | 200
+Tax & Tips        | 100
+```
+- Add items with final prices in a dynamic table
+- Add or remove rows as needed
+- Auto-calculates total bill amount
 
-### 3. **Assign Weights**
-- Use **Quick Split** buttons for equal sharing
-- Manually edit weights for custom splits
+### **Step 3: ⚖️ Assign Weights**
+```
+Person  | Food | Drinks | Tax & Tips
+Alice   |  1   |   0    |     1
+Bob     |  1   |   1    |     1  
+Carol   |  1   |   1    |     1
+David   |  1   |   0    |     1
+```
+- Default weights start at 0 (nothing assigned)
+- Set weights manually for each person-item combination
 - Weight 0 = doesn't pay, Weight 1 = normal share, Weight 2+ = larger share
 
-### 4. **Track Payments**
-- Enter who actually paid what amounts
-- Get automatic settlement calculations
-- Follow transaction guide to settle up
+### **Step 4: 💳 Track Payments & Settle**
+- Enter actual payments made by each person
+- Get automated settlement calculations
+- Download detailed summaries or copy WhatsApp-ready text
 
 ## 💡 Example Scenarios
 
@@ -78,23 +98,14 @@ A modern, user-friendly Streamlit web application that makes splitting bills amo
 - **Python**: Core programming language
 
 ### **Key Components**
-- `streamlit_bill_split_v2.py`: Main application file
+- `streamlit_bill.py`: Main application file
 - `requirements.txt`: Python dependencies
-- Session state management for persistent data
+- Zero session state for better performance
 - Real-time calculations and validations
-
-### **Deployment**
-- **Platform**: Streamlit Community Cloud
-- **URL**: [splitc.streamlit.app](https://splitc.streamlit.app)
-- **Auto-deployment**: Connected to GitHub repository
-- **Zero-cost hosting**: Free for public repositories
 
 ## 🏃‍♂️ Quick Start
 
-### **Option 1: Use Online (Recommended)**
-Simply visit [splitc.streamlit.app](https://splitc.streamlit.app) - no installation needed!
-
-### **Option 2: Run Locally**
+### **Option 1: Run Locally**
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/Split_Bill_v2.git
@@ -104,7 +115,7 @@ cd Split_Bill_v2
 pip install -r requirements.txt
 
 # Run the app
-streamlit run streamlit_bill_split_v2.py
+streamlit run streamlit_bill.py
 ```
 
 ## 📱 How to Use
@@ -117,66 +128,57 @@ streamlit run streamlit_bill_split_v2.py
    Example: Alice, Bob, Carol
    ```
 
-2. **List Items/Categories**
+2. **Add Bill Items**
    ```
-   🛒 Items: Type items separated by commas  
-   Example: Food, Drinks, Tax, Tips
+   � Items: Click cells to add item names and final prices
+   Example: Food (₹800), Drinks (₹200), Tax (₹100)
    ```
 
-3. **Generate Template**
-   - Click "🚀 Generate Bill Split Template"
-   - Interface expands with editing options
-
-4. **Set Prices & Quantities**
-   - Click any cell in the Item Details table
-   - Type new values and press Enter
-   - Watch totals update automatically
-
-5. **Assign Weights**
-   - Use "⚖️ Split [Item]" buttons for equal distribution
-   - Or manually click cells to set custom weights
+3. **Assign Weights**
+   - All weights start at 0 (nothing assigned initially)
+   - Manually set weights for each person-item combination
    - Weight 0 = person doesn't pay for this item
    - Weight 1 = normal equal share
    - Weight 2+ = larger share (e.g., ate more)
 
-6. **Track Payments**
+4. **Track Payments**
    - Enter actual amounts paid by each person
    - View settlement calculations
-   - Follow transaction guide to settle up
+   - Use WhatsApp summary or export detailed records
+
+### **Export & Sharing Options** �
+
+1. **WhatsApp Summary**
+   - Copy-paste ready text for group chats
+   - Includes all essential information
+   - Perfect for quick sharing
+
+2. **Detailed Text Export**
+   - Comprehensive formatted summary
+   - Complete weight matrix and calculations
+   - Professional documentation
+
+3. **CSV Export**
+   - Spreadsheet-compatible format
+   - Import into Excel or Google Sheets
+   - Further analysis and record keeping
 
 ### **Pro Tips** 💡
 
 - **Editing Cells**: Click → Type → Press Enter for best results
-- **Quick Equal Split**: Use the split buttons above each column
-- **Complex Scenarios**: Mix equal splits with custom weights
+- **Starting Fresh**: All weights begin at 0 for intentional assignment
+- **Complex Scenarios**: Use different weights for different consumption levels
 - **Mobile Use**: App works great on phones for on-the-go splitting
-- **Share Results**: Take screenshots of final tables to share
-
-## 🔗 Deployment Information
-
-The app is deployed on **Streamlit Community Cloud**:
-
-- **URL**: [splitc.streamlit.app](https://splitc.streamlit.app)
-- **Platform**: Streamlit Community Cloud (free tier)
-- **Repository**: Connected to GitHub for auto-deployment
-- **Updates**: Any code changes automatically deploy to the live app
-- **Uptime**: 24/7 availability with Streamlit's infrastructure
-- **SSL**: Secure HTTPS connection included
-
-### **Deployment Benefits**
-- ✅ **No Installation Required**: Works in any web browser
-- ✅ **Always Updated**: Latest features automatically available
-- ✅ **Cross-Platform**: Works on Windows, Mac, iOS, Android
-- ✅ **Shareable**: Send the link to anyone
-- ✅ **Fast Loading**: Optimized for quick access
+- **Export Everything**: Download detailed records for your files
 
 ## 📊 Project Structure
 
 ```
 Split_Bill_v2/
-├── 📄 streamlit_bill_split_v2.py    # Main application
+├── 📄 streamlit_bill.py             # Main application
 ├── 📄 requirements.txt              # Python dependencies  
 ├── 📄 README.md                     # This documentation
+├── 📄 excel_bill.py                 # Excel processing utility
 ├── 📁 Bills/                        # Sample Excel files
 │   ├── BillSplit.xlsx
 │   ├── deadpool.xlsx
@@ -196,17 +198,17 @@ We welcome contributions! Here's how you can help:
 
 ### **Ideas for Contributions**
 - 🌍 Multi-currency support
-- 📧 Email/SMS sharing of results
-- 📊 Spending analytics and reports
+-  Spending analytics and reports
 - 🎨 Custom themes and styling
 - 📱 Mobile app version
 - 💾 Save/load bill templates
+- 🔗 Integration with payment apps
 
 ## 📞 Support & Contact
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/Split_Bill_v2/issues)
-- **Feature Requests**: Open an issue with the "enhancement" label
-- **Questions**: Use GitHub Discussions
+- **Issues**: Report bugs or request features via GitHub Issues
+- **Questions**: Use GitHub Discussions for general questions
+- **Contributions**: Pull requests welcome!
 
 ## 📜 License
 
@@ -215,5 +217,3 @@ This project is open source and available under the [MIT License](LICENSE).
 ---
 
 **Made with ❤️ and ☕ for hassle-free bill splitting!**
-
-*Last updated: December 2024*

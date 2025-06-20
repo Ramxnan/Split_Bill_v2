@@ -3,13 +3,10 @@ import pandas as pd
 
 st.set_page_config(page_title="Bill Splitter - Interactive", layout="wide")
 
-def calculate_bill_split(people, items, prices, quantities, weights):
+def calculate_bill_split(people, items, final_prices, weights):
     """
-    Calculate bill split based on the same logic as the Excel formulas
+    Calculate bill split based on weighted distribution
     """
-    # Calculate final prices for each item
-    final_prices = [price * qty for price, qty in zip(prices, quantities)]
-    
     # Calculate weighted splits for each person-item combination
     splits = {}
     for person_idx, person in enumerate(people):
@@ -29,7 +26,7 @@ def calculate_bill_split(people, items, prices, quantities, weights):
                 split_amount = 0
             splits[person].append(split_amount)
     
-    return final_prices, splits
+    return splits
 
 def calculate_settlement_transactions(people, paid_amounts, person_totals):
     """
@@ -80,165 +77,94 @@ def main():
     st.title("🧾 Interactive Bill Splitter")
     st.markdown("*Split bills fairly with weighted distribution*")
     st.markdown("---")
-      # Input section
-    col1, col2 = st.columns(2)
     
-    with col1:
-        st.subheader("👥 People")
-        people_input = st.text_area(
-            "Who's splitting the bill?", 
-            placeholder="🧑‍💼 Alice, 👨‍💻 Bob, 👩‍🎨 Carol, 🧑‍🍳 David",
-            height=100,
-            help="💡 Enter names separated by commas"
-        )
-        people = [p.strip() for p in people_input.split(",") if p.strip()]
+    # Step 1: People Input
+    st.subheader("👥 Step 1: Enter People")
+    st.info("💡 **Tip**: Enter the names of people splitting the bill")
     
-    with col2:
-        st.subheader("🛒 Items & Categories")
-        items_input = st.text_area(
-            "What are you splitting?", 
-            placeholder="🍕 Food, 🥤 Drinks, 💰 Tax, 🎯 Tips",
-            height=100,
-            help="💡 Enter items/categories separated by commas"
-        )
-        items = [i.strip() for i in items_input.split(",") if i.strip()]    
-    # Generate Template Button - Show as soon as user starts typing
-    if people_input.strip() or items_input.strip():
-        st.markdown("---")
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col2:
-            if st.button("🚀 Generate Bill Split Template", type="primary", use_container_width=True):
-                if not people:
-                    st.error("❌ Please enter at least one person's name")
-                elif not items:
-                    st.error("❌ Please enter at least one item")
-                else:
-                    st.session_state.show_template = True
-                    st.session_state.people = people
-                    st.session_state.items = items
-                    st.success("✅ Template generated! Scroll down to start splitting the bill.")
-                    st.rerun()
-      # Show template only after button is clicked and validation passed
-    if st.session_state.get('show_template', False):
-        # Use session state values to maintain consistency
-        people = st.session_state.get('people', people)
-        items = st.session_state.get('items', items)
-        
-        # Add a reset button at the top
-        col1, col2, col3 = st.columns([1, 1, 1])
-        with col3:
-            if st.button("🔄 Reset Template", type="secondary", help="Start over with new people/items"):
-                # Clear all session state
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
-                st.rerun()
-        st.markdown("---")
-          # Price and Quantity Input Section using editable matrix
-        st.subheader("💰 Item Details")
-        st.info("📝 **Instructions**: Click on cells to edit prices and quantities directly in the table below")
-        
-        # Create initial dataframe for item details
-        item_details_df = pd.DataFrame({
-            'Item': items,
-            'Price (₹)': [0] * len(items),
-            'Quantity': [1] * len(items)
-        })
-        
-        # Use data_editor for Excel-like editing
-        edited_item_details = st.data_editor(
-            item_details_df,
-            column_config={
-                "Item": st.column_config.TextColumn("Item", disabled=True),
-                "Price (₹)": st.column_config.NumberColumn("Price (₹)", min_value=0, step=1),
-                "Quantity": st.column_config.NumberColumn("Quantity", min_value=0, step=1)
-            },
-            use_container_width=True,
-            hide_index=True,
-            key="item_details_editor"
-        )
-        
-        # Extract prices and quantities from the edited dataframe
-        prices = edited_item_details['Price (₹)'].tolist()
-        quantities = edited_item_details['Quantity'].tolist()
-        
-        # Calculate final prices
-        final_prices = [price * qty for price, qty in zip(prices, quantities)]
-        total_bill = sum(final_prices)
-        
-        # Display final prices
-        st.markdown("---")
-        st.subheader("📊 Final Prices")
-        final_price_data = {
-            "🍽️ Item": items,
-            "💰 Price": [f"₹{p}" for p in prices],
-            "🔢 Qty": quantities,
-            "💸 Final Price": [f"₹{fp}" for fp in final_prices]
-        }
-        
-        st.dataframe(pd.DataFrame(final_price_data), use_container_width=True, hide_index=True)
-        
-        # Total bill with better formatting
+    people_input = st.text_area(
+        "Who's splitting the bill?", 
+        placeholder="🧑‍💼 Alice, 👨‍💻 Bob, 👩‍🎨 Carol, 🧑‍🍳 David",
+        height=80,
+        help="💡 Enter names separated by commas"
+    )
+    people = [p.strip() for p in people_input.split(",") if p.strip()]
+    
+    if people:
+        st.success(f"✅ {len(people)} people added: {', '.join(people)}")
+    
+    # Step 2: Bill Matrix - Always show, can start with empty rows
+    st.markdown("---")
+    st.subheader("💰 Step 2: Bill Items")
+    st.info("📝 **Instructions**: Add items and their final prices. Click on cells to edit directly.")
+    
+    # Create initial bill matrix with some default rows
+    initial_bill_data = {
+        'Item Name': ['', '', '', '', ''],
+        'Final Price (₹)': [0, 0, 0, 0, 0]
+    }
+    
+    bill_df = pd.DataFrame(initial_bill_data)
+    
+    # Use data_editor for bill matrix
+    edited_bill = st.data_editor(
+        bill_df,
+        column_config={
+            "Item Name": st.column_config.TextColumn("Item Name", help="Enter item/category name"),
+            "Final Price (₹)": st.column_config.NumberColumn("Final Price (₹)", min_value=0, step=1, help="Enter final price for this item")
+        },
+        use_container_width=True,
+        hide_index=True,
+        num_rows="dynamic"  # Allow adding/removing rows
+    )    # Filter out empty items
+    items = []
+    final_prices = []
+    
+    # Check if edited_bill is not empty and has the expected columns
+    if not edited_bill.empty and 'Item Name' in edited_bill.columns and 'Final Price (₹)' in edited_bill.columns:
+        for _, row in edited_bill.iterrows():
+            # Check if the row has the required columns and the item name is not empty
+            if pd.notna(row['Item Name']) and str(row['Item Name']).strip():
+                items.append(str(row['Item Name']).strip())
+                # Ensure the price is a valid number
+                price = row['Final Price (₹)'] if pd.notna(row['Final Price (₹)']) else 0
+                final_prices.append(float(price))
+    
+    # Calculate total bill
+    total_bill = sum(final_prices)
+    
+    if items:
+        st.success(f"✅ {len(items)} items added")
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             st.metric("🧾 **Total Bill**", f"₹{total_bill}")
-        
-        # Weight Input Section using matrix format
+    
+    # Step 3: Weight Matrix - Show when we have both people and items
+    if people and items:        # Step 3: Weight Matrix
         st.markdown("---")
-        st.subheader("⚖️ Weight Assignment Matrix")
-        st.info("💡 **Tip**: Click cells to edit weights, or use Quick Split buttons below")
+        st.subheader("⚖️ Step 3: Weight Assignment")
+        st.info("� **Tip**: Set weights to determine how to split each item. Weight 0 = doesn't pay, Weight 1 = normal share, Weight 2+ = larger share")
         
         # Add instructions for editing
-        with st.expander("📖 How to Edit Weights"):
+        with st.expander("📖 How Weight Assignment Works"):
             st.markdown("""
-            **Editing Tips:**
-            1. **Click on a cell** → Type new number → **Press Enter**
-            2. **Weight 0** = Person doesn't pay for this item
-            3. **Weight 1** = Normal share
-            4. **Weight 2+** = Larger share (e.g., if someone ate more)
+            **How to use weights:**
+            - **Weight 0**: Person doesn't pay for this item
+            - **Weight 1**: Normal/equal share of the item
+            - **Weight 2**: Double share (person pays twice as much)
+            - **Weight 0.5**: Half share (person pays half as much)
             
-            **Quick Split Buttons:** Set everyone to equal weight (1) for that item
+            **Example**: If Food costs ₹100 and weights are [Alice: 1, Bob: 2, Carol: 0]
+            - Alice pays: ₹33 (1/3 of ₹100)
+            - Bob pays: ₹67 (2/3 of ₹100) 
+            - Carol pays: ₹0 (0/3 of ₹100)
             """)
-          # Create initial weight matrix with session state
-        if 'weight_matrix' not in st.session_state or len(st.session_state.weight_matrix) == 0:
-            st.session_state.weight_matrix = pd.DataFrame({
-                'Person': people,
-                **{item: [0] * len(people) for item in items}
-            })
-        
-        # Update matrix if people or items changed
-        current_people = set(st.session_state.weight_matrix['Person'])
-        current_items = set(st.session_state.weight_matrix.columns[1:])
-        if current_people != set(people) or current_items != set(items):
-            st.session_state.weight_matrix = pd.DataFrame({
-                'Person': people,
-                **{item: [0] * len(people) for item in items}
-            })
-        
-        # Create layout for buttons above each item column
-        matrix_cols = st.columns([1.2] + [1] * len(items))
-        
-        # Quick action buttons
-        with matrix_cols[0]:
-            st.write("**Quick Actions:**")
-        
-        # Handle button clicks and apply to session state
-        for idx, item in enumerate(items):
-            with matrix_cols[idx + 1]:
-                # Create a more specific button label
-                button_key = f"split_{item}_{idx}"
-                if st.button(f"⚖️ Split {item[:8]}{'...' if len(item) > 8 else ''}", 
-                           key=button_key,
-                           help=f"Set equal weights for all people for {item}", 
-                           use_container_width=True,
-                           type="primary"):
-                    # Apply equal split to session state
-                    for person_idx in range(len(people)):
-                        st.session_state.weight_matrix.loc[person_idx, item] = 1
-                    st.rerun()
-        
-        st.write("")  # Spacing
-        
-        # Configure columns for the weight matrix editor
+          # Create initial weight matrix
+        weight_matrix = pd.DataFrame({
+            'Person': people,
+            **{item: [0] * len(people) for item in items}  # Default weight of 0 (nothing assigned initially)
+        })
+          # Configure columns for the weight matrix editor
         column_config = {
             "Person": st.column_config.TextColumn("Person", disabled=True)
         }
@@ -248,19 +174,13 @@ def main():
                 min_value=0, 
                 step=1,
                 help=f"Weight for {item}"
-            )
-        
-        # Use data_editor for matrix input with session state
+            )        # Use data_editor for matrix input
         edited_weights = st.data_editor(
-            st.session_state.weight_matrix,
+            weight_matrix,
             column_config=column_config,
             use_container_width=True,
-            hide_index=True,
-            key="weight_matrix_editor"
+            hide_index=True
         )
-        
-        # Update session state with edited weights
-        st.session_state.weight_matrix = edited_weights
         
         # Convert matrix to the format expected by the calculation function
         weights = []
@@ -280,7 +200,7 @@ def main():
         st.write("**📊 Weight Totals:**")
         st.dataframe(weight_totals_df, use_container_width=True, hide_index=True)
         
-        # Calculate splits
+        # Calculate splits - Show results when weights are set
         if any(sum(w) > 0 for w in weights):
             st.markdown("---")
             st.subheader("💸 Bill Split Results")
@@ -351,8 +271,7 @@ def main():
             payment_df = pd.DataFrame({
                 '👤 Person': people,
                 '💰 Paid (₹)': [0] * len(people)
-            })
-              # Use data_editor for payment input
+            })            # Use data_editor for payment input
             edited_payments = st.data_editor(
                 payment_df,
                 column_config={
@@ -360,11 +279,10 @@ def main():
                     "💰 Paid (₹)": st.column_config.NumberColumn("💰 Paid (₹)", min_value=0, step=1)
                 },
                 use_container_width=True,
-                hide_index=True,
-                key="payment_editor"
+                hide_index=True
             )
             
-            # Extract paid amounts
+            # Extract paid_amounts
             paid_amounts = edited_payments['💰 Paid (₹)'].tolist()
             
             # Display settlement summary
@@ -415,6 +333,292 @@ def main():
                     
                     💡 **Pro Tip**: Complete all transactions shown above to fully settle the bill!
                     """)
+                
+                # WhatsApp Summary Section
+                st.markdown("---")
+                st.subheader("📱 WhatsApp Summary")
+                st.info("💬 **Copy & paste this summary to share with your friends on WhatsApp**")
+                
+                # Generate WhatsApp-friendly text summary
+                whatsapp_summary = generate_whatsapp_summary(
+                    items, final_prices, people, person_totals, 
+                    paid_amounts, transactions, total_bill
+                )                  # Display the summary in a text area for easy copying
+                st.text_area(
+                    "📋 Copy this text and send it on WhatsApp:",
+                    value=whatsapp_summary,
+                    height=400,
+                    help="Click inside the box and use Ctrl+A to select all, then Ctrl+C to copy"
+                )
+                
+                # Detailed Export Section
+                st.markdown("---")
+                st.subheader("💾 Export Detailed Summary")
+                st.info("📁 **Save a comprehensive record of this bill split for your reference**")
+                
+                # Generate detailed export content
+                detailed_summary = generate_detailed_export(
+                    items, final_prices, people, person_totals, paid_amounts, 
+                    transactions, total_bill, edited_weights, weights
+                )
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Text file download
+                    st.download_button(
+                        label="📄 Download as Text File",
+                        data=detailed_summary,
+                        file_name=f"bill_split_summary_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                        mime="text/plain",
+                        help="Download a detailed text file with all bill split information"
+                    )
+                
+                with col2:
+                    # CSV export button
+                    csv_data = generate_csv_export(items, final_prices, people, person_totals, paid_amounts, edited_weights)
+                    st.download_button(
+                        label="📊 Download as Excel/CSV",
+                        data=csv_data,
+                        file_name=f"bill_split_data_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        help="Download bill data in spreadsheet format for analysis"
+                    )
+                
+                # Preview of detailed summary
+                with st.expander("🔍 Preview Detailed Summary"):
+                    st.text_area("Preview of the detailed export file:", value=detailed_summary, height=300, disabled=True)
+
+def generate_whatsapp_summary(items, final_prices, people, person_totals, paid_amounts, transactions, total_bill):
+    """
+    Generate a WhatsApp-friendly text summary of the bill split
+    """
+    summary = "💰 **BILL SPLIT SUMMARY** 💰\n"
+    summary += "=" * 30 + "\n\n"
+    
+    # Bill breakdown
+    summary += "🧾 **BILL BREAKDOWN:**\n"
+    for i, (item, price) in enumerate(zip(items, final_prices)):
+        summary += f"• {item}: ₹{price:.0f}\n"
+    summary += f"\n💸 **TOTAL BILL: ₹{total_bill:.0f}**\n\n"
+    
+    # Individual shares
+    summary += "👥 **INDIVIDUAL SHARES:**\n"
+    for i, (person, total) in enumerate(zip(people, person_totals)):
+        paid = paid_amounts[i]
+        balance = paid - total
+        status = "✅ Settled" if abs(balance) < 1 else f"{'💰 Owes' if balance < 0 else '💸 Gets back'} ₹{abs(balance):.0f}"
+        summary += f"• {person}: Should pay ₹{total:.0f} | Paid ₹{paid:.0f} | {status}\n"
+    
+    # Settlement transactions
+    if transactions:
+        summary += f"\n💳 **SETTLEMENT NEEDED:**\n"
+        for from_person, to_person, amount in transactions:
+            summary += f"• {from_person} → {to_person}: ₹{amount:.0f}\n"
+        summary += "\n📝 **Complete the above transactions to settle the bill!**\n"
+    else:
+        summary += f"\n🎉 **ALL SETTLED!** No transactions needed.\n"
+    
+    # Footer
+    summary += f"\n" + "=" * 30 + "\n"
+    summary += "Generated by Bill Splitter App 🧾\n"
+    summary += f"📅 {pd.Timestamp.now().strftime('%d %b %Y, %I:%M %p')}"
+    
+    return summary
+
+def generate_detailed_export(items, final_prices, people, person_totals, paid_amounts, transactions, total_bill, edited_weights, weights):
+    """
+    Generate a comprehensive detailed export of the bill split
+    """
+    timestamp = pd.Timestamp.now().strftime('%d %B %Y, %I:%M %p')
+    
+    summary = f"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           DETAILED BILL SPLIT SUMMARY                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📅 Generated: {timestamp}
+🧾 Total Bill Amount: ₹{total_bill:.2f}
+👥 Number of People: {len(people)}
+🛒 Number of Items: {len(items)}
+
+═══════════════════════════════════════════════════════════════════════════════
+                                  PARTICIPANTS
+═══════════════════════════════════════════════════════════════════════════════
+{', '.join(people)}
+
+═══════════════════════════════════════════════════════════════════════════════
+                                 BILL BREAKDOWN
+═══════════════════════════════════════════════════════════════════════════════
+"""
+    
+    for i, (item, price) in enumerate(zip(items, final_prices)):
+        summary += f"{i+1:2d}. {item:<30} ₹{price:>8.2f}\n"
+    
+    summary += f"\n{'Total Bill Amount:':<32} ₹{total_bill:>8.2f}\n"
+    
+    # Weight Matrix
+    summary += f"""
+═══════════════════════════════════════════════════════════════════════════════
+                               WEIGHT ASSIGNMENT MATRIX
+═══════════════════════════════════════════════════════════════════════════════
+"""
+    
+    # Header for weight matrix
+    header = f"{'Person':<15}"
+    for item in items:
+        header += f"{item[:10]:<12}"
+    summary += header + "\n" + "─" * len(header) + "\n"
+    
+    # Weight matrix rows
+    for person_idx, person in enumerate(people):
+        row = f"{person:<15}"
+        for item in items:
+            weight = edited_weights.loc[person_idx, item]
+            row += f"{weight:<12}"
+        summary += row + "\n"
+    
+    # Weight totals
+    summary += "─" * len(header) + "\n"
+    totals_row = f"{'TOTALS:':<15}"
+    for item in items:
+        total_weight = sum(edited_weights[item])
+        totals_row += f"{total_weight:<12}"
+    summary += totals_row + "\n"
+    
+    # Individual Split Details
+    summary += f"""
+═══════════════════════════════════════════════════════════════════════════════
+                              INDIVIDUAL SPLIT BREAKDOWN
+═══════════════════════════════════════════════════════════════════════════════
+"""
+    
+    for person_idx, person in enumerate(people):
+        summary += f"\n🧑 {person.upper()}:\n"
+        summary += "─" * 50 + "\n"
+        person_total = 0
+        
+        for item_idx, item in enumerate(items):
+            weight = weights[item_idx][person_idx]
+            total_weight = sum(weights[item_idx])
+            if total_weight > 0:
+                split_amount = (weight / total_weight) * final_prices[item_idx]
+            else:
+                split_amount = 0
+            person_total += split_amount
+            
+            if weight > 0:
+                percentage = (weight / total_weight * 100) if total_weight > 0 else 0
+                summary += f"  {item:<25} Weight: {weight:<3} ({percentage:5.1f}%) → ₹{split_amount:>7.2f}\n"
+        
+        summary += "─" * 50 + "\n"
+        summary += f"  {'TOTAL FOR ' + person.upper():<35} → ₹{person_total:>7.2f}\n"
+    
+    # Payment Summary
+    summary += f"""
+═══════════════════════════════════════════════════════════════════════════════
+                                PAYMENT SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+"""
+    
+    summary += f"{'Person':<15} {'Should Pay':<12} {'Actually Paid':<15} {'Balance':<12} {'Status'}\n"
+    summary += "─" * 75 + "\n"
+    
+    for i, person in enumerate(people):
+        should_pay = person_totals[i]
+        paid = paid_amounts[i]
+        balance = paid - should_pay
+        
+        if abs(balance) < 0.01:
+            status = "✅ SETTLED"
+        elif balance < 0:
+            status = f"💰 OWES ₹{abs(balance):.2f}"
+        else:
+            status = f"💸 GETS ₹{balance:.2f}"
+        
+        summary += f"{person:<15} ₹{should_pay:<11.2f} ₹{paid:<14.2f} ₹{balance:<11.2f} {status}\n"
+    
+    # Settlement Transactions
+    if transactions:
+        summary += f"""
+═══════════════════════════════════════════════════════════════════════════════
+                              SETTLEMENT TRANSACTIONS
+═══════════════════════════════════════════════════════════════════════════════
+💡 Complete these transactions to settle all balances:
+
+"""
+        for i, (from_person, to_person, amount) in enumerate(transactions):
+            summary += f"{i+1}. {from_person} → {to_person}: ₹{amount:.2f}\n"
+    else:
+        summary += f"""
+═══════════════════════════════════════════════════════════════════════════════
+                              SETTLEMENT TRANSACTIONS
+═══════════════════════════════════════════════════════════════════════════════
+🎉 NO TRANSACTIONS NEEDED - ALL BALANCES ARE SETTLED!
+"""
+    
+    summary += f"""
+═══════════════════════════════════════════════════════════════════════════════
+                                   SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+Total Bill Amount:     ₹{total_bill:.2f}
+Total Amount Split:    ₹{sum(person_totals):.2f}
+Total Amount Paid:     ₹{sum(paid_amounts):.2f}
+Balance Verification:  {'✅ VERIFIED' if abs(total_bill - sum(person_totals)) < 0.01 else '❌ MISMATCH'}
+Payment Verification:  {'✅ VERIFIED' if abs(sum(paid_amounts) - total_bill) < 0.01 else '❌ MISMATCH'}
+
+═══════════════════════════════════════════════════════════════════════════════
+Generated by Interactive Bill Splitter
+📅 {timestamp}
+═══════════════════════════════════════════════════════════════════════════════
+"""
+    
+    return summary
+
+def generate_csv_export(items, final_prices, people, person_totals, paid_amounts, edited_weights):
+    """
+    Generate CSV data for spreadsheet export
+    """
+    import io
+    
+    output = io.StringIO()
+    
+    # Write basic info
+    output.write("Bill Split Summary\n")
+    output.write(f"Generated,{pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    output.write(f"Total Bill,₹{sum(final_prices):.2f}\n")
+    output.write("\n")
+    
+    # Write items breakdown
+    output.write("Items Breakdown\n")
+    output.write("Item,Price\n")
+    for item, price in zip(items, final_prices):
+        output.write(f"{item},₹{price:.2f}\n")
+    output.write("\n")
+    
+    # Write weight matrix
+    output.write("Weight Matrix\n")
+    header = "Person," + ",".join(items) + "\n"
+    output.write(header)
+    
+    for person_idx, person in enumerate(people):
+        row = f"{person},"
+        for item in items:
+            weight = edited_weights.loc[person_idx, item]
+            row += f"{weight},"
+        output.write(row.rstrip(',') + "\n")
+    output.write("\n")
+    
+    # Write final amounts
+    output.write("Final Split\n")
+    output.write("Person,Should Pay,Paid,Balance\n")
+    for i, person in enumerate(people):
+        should_pay = person_totals[i]
+        paid = paid_amounts[i]
+        balance = paid - should_pay
+        output.write(f"{person},₹{should_pay:.2f},₹{paid:.2f},₹{balance:.2f}\n")
+    
+    return output.getvalue()
 
 if __name__ == "__main__":
     main()
